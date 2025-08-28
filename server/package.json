@@ -1,0 +1,22 @@
+{
+  "name": "ordinals-whitelist-server",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "wipe": "node scripts/wipe.mjs",
+    "seed": "node scripts/seed.mjs",
+    "reseat": "npm run wipe && npm run seed"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "mongodb": "^6.8.0",
+    "mongoose": "^8.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

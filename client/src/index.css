@@ -1,0 +1,300 @@
+/* ========== Base & Theme (fondo igual al fox.gif) ========== */
+:root{
+  --bg:#2d0334;               /* morado sólido del asset */
+  --surface:#0f1420;
+  --surface-80: rgba(18, 0, 28, .78);
+  --card-border: rgba(255,255,255,.10);
+
+  --text:#f6f3ff;
+  --muted:#cbbfe6;
+
+  --accent:#F7931A;
+  --accent-2:#c57007;
+
+  --gold-1:#ffe08a;
+  --gold-2:#ffb64d;
+  --gold-3:#f7931a;
+
+  --violet:#c36bff;
+  --ring: rgba(195,107,255,.28);
+
+  /* Tamaño/posición del GIF */
+  --gif-w: min(320px, 45vw);   /* tamaño del gif */
+  --gif-crop-top: 14px;        /* recorte superior del marco del gif */
+  --gif-crop-sides: 14px;      /* recorte laterales */
+  --gif-crop-bottom: 0px;      /* sin recorte inferior para que apoye en la card */
+  --gif-overlap: 48px;         /* cuánto entra en la card */
+  --gif-nudge: 6px;            /* pequeño empuje hacia abajo */
+
+  /* Alineación fina: negativo = card más baja, positivo = más alta */
+  --align-offset: -6px;
+}
+
+*{ box-sizing:border-box; }
+html,body,#root{ height:100%; }
+body{
+  margin:0;
+  background: var(--bg);    /* fondo plano para integrar el GIF */
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Layout ========== */
+.page{ position:relative; min-height:100vh; overflow:hidden; }
+.container{ position:relative; max-width: 1100px; padding: 12px 12px 12px; margin: 0 auto; }
+
+/* Gradiente SOLO arriba (por encima del título) */
+.top-gradient{
+  position:absolute; left:0; right:0; top:0;
+  height: clamp(120px, 22vh, 220px);
+  pointer-events:none;
+  background:
+    radial-gradient(700px 380px at 50% -120px, rgba(247,147,26,.14), transparent 60%),
+    radial-gradient(520px 260px at 85% 0%, rgba(195,107,255,.12), transparent 55%);
+  opacity:.9;
+  mix-blend-mode: screen;
+}
+
+/* ========== Brand pill ========== */
+.brand-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(6px);
+  font-weight:600; font-size:12px;
+  color:#e9ecf1;
+  box-shadow: 0 6px 18px rgba(195,107,255,.14);
+}
+.brand-logo{ height:16px; width:auto; display:block; }
+.icon-14{ width:14px; height:14px; display:inline-block; }
+.icon-16{ width:16px; height:16px; display:inline-block; }
+
+/* ========== Hero ========== */
+.hero{ margin-top: 18px; text-align:center; }
+.hero-title{
+  margin: 6px 0 6px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color:#fff !important;            /* título blanco */
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  text-shadow:none;
+}
+.hero-subtitle{
+  margin: 0 auto;
+  max-width: 720px;
+  font-size: 13px;
+  color: rgba(255,255,255,.76);
+}
+@media (min-width: 960px){
+  .hero-title{ font-size: 36px; }
+  .hero-subtitle{ font-size: 15px; }
+}
+
+/* ========== GIF encima + card debajo (centrados) ========== */
+.hero-stack{
+  display:grid;
+  justify-items:center;
+  row-gap: 0;
+  margin-top: 8px;
+}
+
+/* El GIF va fuera del formulario y se “mete” en la card */
+.media-holder{
+  position: relative;
+  z-index: 2; /* por encima del borde de la card */
+  /* offset para ajustar alineación: negativo = card más baja */
+}
+
+.gif-fox{
+  width: var(--gif-w);
+  height: auto;
+  image-rendering: pixelated;
+  display:block;
+  filter: none;                 /* sin sombras ni brillos */
+  background: transparent;
+  pointer-events:none;
+  /* recorte del asset: arriba y lados; abajo intacto para que apoye */
+  clip-path: inset(var(--gif-crop-top) var(--gif-crop-sides) var(--gif-crop-bottom) var(--gif-crop-sides));
+}
+
+/* ========== Card (solo formulario) ========== */
+.card{
+  width: 100%;
+  max-width: 980px;
+  background: linear-gradient(180deg, rgba(18,0,28,.55), rgba(12,0,20,.55));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 32px rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,255,255,.06);
+  position:relative;
+}
+/* Reserva el mismo espacio que ocupa el solape del GIF */
+.card-with-media{
+}
+@media (min-width: 960px){
+  .card{ padding: 26px 28px; }
+  .card-with-media{
+  }
+}
+
+.card:before{
+  content:"";
+  position:absolute; inset:-1px;
+  border-radius: inherit;
+  padding:1px;
+  background: linear-gradient(180deg, rgba(255,224,138,.28), rgba(247,147,26,.25), rgba(195,107,255,.22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events:none;
+}
+
+.card-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color: rgba(255,255,255,.92);
+  margin-bottom: 12px;
+}
+.card-title h2{ font-size:14px; margin:0; font-weight:700; }
+
+/* ========== Form controls ========== */
+.label{
+  display:block;
+  font-size:12px;
+  color: rgba(255,255,255,.72);
+  margin-bottom: 8px;
+}
+.muted{ color: rgba(255,255,255,.6); }
+
+.row{
+  display:flex;
+  flex-direction: column;
+  gap:10px;
+}
+@media (min-width: 720px){
+  .row{ flex-direction: row; }
+}
+
+.input{
+  flex:1;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: #0b0f1a;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .06s ease;
+}
+.input::placeholder{ color: rgba(255,255,255,.45); }
+.input:focus{
+  border-color: rgba(195,107,255,.55);
+  box-shadow: 0 0 0 4px var(--ring);
+  transform: translateY(-1px);
+}
+
+.btn{
+  height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #1a0d00;
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2) 60%, var(--gold-3));
+  box-shadow: 0 12px 28px rgba(247,147,26,.28), inset 0 -2px 0 rgba(0,0,0,.22);
+  cursor: pointer;
+  transition: transform .06s ease, opacity .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.btn:hover{ opacity:.96; box-shadow: 0 14px 32px rgba(247,147,26,.33); filter: saturate(1.05); }
+.btn:active{ transform: translateY(1px); }
+.btn:disabled{ opacity:.65; cursor:not-allowed; }
+
+/* Spinner */
+.spinner{
+  width:14px; height:14px;
+  border-radius:999px;
+  border:2px solid rgba(26,13,0,.45);
+  border-top-color: transparent;
+  display:inline-block;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== Result ========== */
+.result{
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  font-size: 13px;
+  color: #eae7ff;
+  background: rgba(255,255,255,.05);
+}
+.result.ok{
+  border-color: rgba(40,199,111,.40);
+  background: rgba(40,199,111,.12);
+  color: #b7f2c8;
+}
+.result.no{
+  border-color: rgba(255,77,79,.40);
+  background: rgba(255,255,255,.05);
+  color: #ffb9bd;
+}
+
+/* ========== Footer ========== */
+.footer{
+  margin: 22px auto 0;
+  max-width: 980px;
+  text-align:center;
+  font-size: 12px;
+  color: rgba(255,255,255,.66);
+}
+
+
+/* ===== Móvil: input MUY alto + botón centrado ===== */
+@media (max-width: 640px){
+  .row{
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  /* Input más alto (y texto cómodo en iOS/Android) */
+  .input{
+    width: 100%;
+    height: 52px;        /* ↑ más alto */
+    min-height: 52px;    /* asegura la altura en Safari */
+    font-size: 17px;     /* evita zoom en iOS */
+    padding: 0 20px;
+    border-radius: 16px;
+  }
+
+  /* Botón centrado debajo del input */
+  .row .btn{
+    height: 48px;
+    font-size: 15px;
+    padding: 0 18px;
+    width: auto;
+    align-self: center;  /* centrado */
+    margin-top: 4px;
+  }
+}
+
+.brand-pill .logo { width:16px; height:16px; border-radius:4px; }
+
+
+
+
