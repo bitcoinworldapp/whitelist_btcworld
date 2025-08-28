@@ -6,95 +6,70 @@ import { MongoClient } from 'mongodb';
 
 const app = express();
 
-// CORS (ajusta FRONT_ORIGIN en prod si quieres restringir)
-const FRONT = process.env.FRONT_ORIGIN;
-app.use(
-  cors({
-    origin: FRONT ? [FRONT] : true,
-    methods: ['GET'],
-  })
-);
+// CORS abierto (ajústalo si quieres restringir a tu dominio del front)
+app.use(cors({ origin: true }));
 app.set('trust proxy', 1);
 
-// ---- Conexión Mongo (usa .env)
-// Un único cliente puede acceder a varias DB dentro del mismo cluster
+// ---------- Configuración Mongo por ENV ----------
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
+const dbName = process.env.MONGO_DB || 'whitelist';
 
-// Lista 1 (whitelist)
-const dbWL   = process.env.MONGO_DB   || 'whitelist';
-const collWL = process.env.MONGO_COLL || 'addresses';
-
-// Lista 2 (goodtoday)
-const dbGT   = process.env.MONGO_DB_GT   || 'goodtoday';
-const collGT = process.env.MONGO_COLL_GT || 'addresses';
+// OJO: aquí definimos las dos colecciones
+// - MONGO_COLL_WHITELIST: colección de la whitelist principal (p. ej. "addresses")
+// - MONGO_COLL_GOODTODAY: colección de la lista GoodToday (p. ej. "goodtoday")
+const collWhitelistName = process.env.MONGO_COLL_WHITELIST || process.env.MONGO_COLL || 'addresses';
+const collGoodtodayName = process.env.MONGO_COLL_GOODTODAY || 'goodtoday';
 
 const client = new MongoClient(uri, { ignoreUndefined: true });
+let colWhitelist, colGoodtoday;
 
-let colWhitelist; // whitelist.addresses
-let colGoodToday; // goodtoday.addresses
-
-// Normaliza: Bech32 a minúsculas; Base58 tal cual
+// Normaliza: Bech32 minúsculas; Base58 tal cual; quita zero-width
 function normalizeAddress(input = '') {
   const s = String(input).trim().replace(/\u200B/g, '');
   if (!s) return '';
   if (/^(bc1|tb1|bcrt1)/i.test(s)) return s.toLowerCase();
-  return s; // base58 es case-sensitive
-}
-
-// Construye query robusta (soporta address, address_lc y normalized)
-function buildQuery(a) {
-  const isBech32 = /^(bc1|tb1|bcrt1)/i.test(a);
-  if (isBech32) {
-    return {
-      $or: [
-        { normalized: a },            // si existe el campo
-        { address: a },               // guardada en minúsculas
-        { address_lc: a },            // algunas cargas guardaron address_lc
-      ],
-    };
-  }
-  // Base58 (case-sensitive): buscamos exacto en address y también normalized
-  return {
-    $or: [
-      { address: a },
-      { normalized: a },
-    ],
-  };
+  return s;
 }
 
 // Healthcheck
 app.get('/api/health', async (_req, res) => {
   try {
-    await client.db(dbWL).command({ ping: 1 });
-    await client.db(dbGT).command({ ping: 1 });
-    res.json({ ok: true, dbs: [dbWL, dbGT] });
+    await client.db(dbName).command({ ping: 1 });
+    res.json({
+      ok: true,
+      db: dbName,
+      collections: {
+        whitelist: collWhitelistName,
+        goodtoday: collGoodtodayName,
+      },
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
-// Check: devuelve dónde está la address
-// { exists: boolean, foundIn: 'whitelist' | 'goodtoday' | 'both' | null }
+// Endpoint que mira en AMBAS colecciones y dice dónde está
 app.get('/api/check', async (req, res) => {
   try {
-    if (!colWhitelist || !colGoodToday) {
+    if (!colWhitelist || !colGoodtoday) {
       return res.status(503).json({ exists: false, error: 'db_not_ready' });
     }
 
-    const raw = String(req.query.address || '');
-    const a = normalizeAddress(raw);
+    const a = normalizeAddress(req.query.address || '');
     if (!a) return res.json({ exists: false, foundIn: null });
 
-    const q = buildQuery(a);
-    const [hitWL, hitGT] = await Promise.all([
-      colWhitelist.findOne(q),
-      colGoodToday.findOne(q),
+    // buscamos por normalized o por address (por si tus docs aún no tienen "normalized")
+    const query = { $or: [{ normalized: a }, { address: a }] };
+
+    const [hitW, hitG] = await Promise.all([
+      colWhitelist.findOne(query),
+      colGoodtoday.findOne(query),
     ]);
 
     let foundIn = null;
-    if (hitWL && hitGT) foundIn = 'both';
-    else if (hitWL) foundIn = 'whitelist';
-    else if (hitGT) foundIn = 'goodtoday';
+    if (hitW && hitG) foundIn = 'both';
+    else if (hitW) foundIn = 'whitelist';
+    else if (hitG) foundIn = 'goodtoday';
 
     res.json({ exists: !!foundIn, foundIn });
   } catch (e) {
@@ -103,32 +78,29 @@ app.get('/api/check', async (req, res) => {
   }
 });
 
-// Arranque tras conectar a Mongo
+// Conexión e índices
 (async () => {
   try {
     await client.connect();
+    const db = client.db(dbName);
 
-    const db1 = client.db(dbWL);
-    const db2 = client.db(dbGT);
-
-    colWhitelist = db1.collection(collWL);
-    colGoodToday = db2.collection(collGT);
+    colWhitelist = db.collection(collWhitelistName);
+    colGoodtoday = db.collection(collGoodtodayName);
 
     // índices (si ya existen no pasa nada)
-    colWhitelist.createIndex({ normalized: 1 }).catch(() => {});
-    colWhitelist.createIndex({ address: 1 }).catch(() => {});
-    colWhitelist.createIndex({ address_lc: 1 }).catch(() => {});
-
-    colGoodToday.createIndex({ normalized: 1 }).catch(() => {});
-    colGoodToday.createIndex({ address: 1 }).catch(() => {});
-    colGoodToday.createIndex({ address_lc: 1 }).catch(() => {});
+    await Promise.all([
+      colWhitelist.createIndex({ normalized: 1 }),
+      colWhitelist.createIndex({ address: 1 }),
+      colGoodtoday.createIndex({ normalized: 1 }),
+      colGoodtoday.createIndex({ address: 1 }),
+    ]);
 
     const PORT = process.env.PORT || 4000;
     app.listen(PORT, '0.0.0.0', () => {
       console.log('API ready on', PORT);
-      console.log('Mongo:', uri);
-      console.log(`WL -> ${dbWL}.${collWL}`);
-      console.log(`GT -> ${dbGT}.${collGT}`);
+      console.log('Mongo URI:', uri);
+      console.log('DB:', dbName);
+      console.log('Collections:', { whitelist: collWhitelistName, goodtoday: collGoodtodayName });
     });
   } catch (e) {
     console.error('MONGO_CONNECT_ERROR:', e);
